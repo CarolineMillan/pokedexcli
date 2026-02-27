@@ -142,6 +142,11 @@ func getCommands() map[string]cliCommand {
 			description: "Displays details about a given pokemon if it is in the Pokedex",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Displays the pokemon in the Pokedex",
+			callback:    commandPokedex,
+		},
 	}
 }
 
@@ -373,5 +378,13 @@ func commandInspect(c *config, pokemon_name string) error {
 		fmt.Printf("  -%s\n", pokemon.Types[i].Type.Name)
 	}
 
+	return nil
+}
+
+func commandPokedex(c *config, _ string) error {
+	fmt.Print("Your Pokedex:")
+	for key, _ := range c.pokedex {
+		fmt.Printf("\n  - %s", key)
+	}
 	return nil
 }

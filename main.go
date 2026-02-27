@@ -12,5 +12,6 @@ func main() {
 	c := &config{}
 	// initialise config here
 	c.cache = pokecache.NewCache(5 * time.Minute)
+	c.pokedex = make(map[string]Pokemon)
 	startREPL(c, scanner)
 }

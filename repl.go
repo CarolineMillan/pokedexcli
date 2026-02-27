@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/carolinemillan/pokedexcli/internal/pokecache"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -62,6 +63,7 @@ type config struct {
 	next     *string
 	previous *string
 	cache    *pokecache.Cache
+	pokedex  map[string]Pokemon
 }
 
 type locationsResponse struct {
@@ -80,6 +82,11 @@ type pokemonsResponse struct {
 			Url  string `json:"url"`
 		} `json:"pokemon"`
 	} `json:"pokemon_encounters"`
+}
+
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
 }
 
 func getCommands() map[string]cliCommand {
@@ -108,6 +115,11 @@ func getCommands() map[string]cliCommand {
 			name:        "explore",
 			description: "Displays the names of all pokemon in the given location",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Throws a Pokeball at the given pokemon in an attempt to catch it",
+			callback:    commandCatch,
 		},
 	}
 }
@@ -267,4 +279,53 @@ func commandExplore(c *config, loc string) error {
 
 	return nil
 
+}
+
+func commandCatch(c *config, pokemon_name string) error {
+	fmt.Printf("Throwing a Pokeball at %s...", pokemon_name)
+	url := "https://pokeapi.co/api/v2/pokemon/" + pokemon_name
+
+	// check whether url is in the cache here
+	body, ok := c.cache.Get(url)
+	if !ok {
+
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Error getting pokemon %s: %w", pokemon_name, err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			return fmt.Errorf("bad status: %s", res.Status)
+		}
+
+		body, err = io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		// add to cache here
+		c.cache.Add(url, body)
+	}
+
+	// unmarshall the json data
+	var data Pokemon
+	err := json.Unmarshal(body, &data)
+	if err != nil {
+		return err
+	}
+
+	base_xp := data.BaseExperience
+
+	if rand.Intn(base_xp) < 40 {
+		// we've caught the pokemon!
+		// add to the pokedex
+		c.pokedex[pokemon_name] = data
+
+		// and print
+		fmt.Printf("\n%s was caught!", pokemon_name)
+	} else {
+		fmt.Printf("\n%s escaped!", pokemon_name)
+	}
+
+	return nil
 }
